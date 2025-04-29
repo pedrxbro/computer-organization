@@ -39,7 +39,22 @@ def extractRegisters(type, binInstruction):
         rd = int(binInstruction[20:25], 2)
         rs1 = int(binInstruction[13:18], 2)
         rs2 = None
+    if type == "S":
+        rd = None
+        rs1 = int(binInstruction[12:17], 2)
+        rs2 = int(binInstruction[7:12], 2)
+    if type == "B":
+        rd = None
+        rs1 = int(binInstruction[12:17], 2)
+        rs2 = int(binInstruction[7:12], 2)
+    if type == "U":
+        print(binInstruction)
+        rd = int(binInstruction[20:25], 2)
+        print(binInstruction[20:25])
+        rs1 = None
+        rs2 = None
     return rd, rs1, rs2
+        
 
 def identifyRegisters(rd, rs1, rs2):
     registers  = { #Validar para colocar o NOME do registrador, não o numero
@@ -52,12 +67,12 @@ def identifyRegisters(rd, rs1, rs2):
 
     rdName = registers.get(rd, "Unknown")
     rs1Name = registers.get(rs1, "Unknown")
-    rs2Name = registers.get(rs2, "Unknown") if rs2 is not None else "N/A"
+    rs2Name = registers.get(rs2, "Unknown")
     return rdName, rs1Name, rs2Name
 
 
 if __name__ == "__main__":
-    archiveName = "ex1_dump"
+    archiveName = "ex4_dump"
     instructions = readHexFile(archiveName)
 
     for instruction in instructions:
