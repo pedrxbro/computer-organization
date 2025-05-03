@@ -48,9 +48,11 @@ def extractRegisters(type, binInstruction):
         rs1 = int(binInstruction[12:17], 2)
         rs2 = int(binInstruction[7:12], 2)
     if type == "U":
-        print(binInstruction)
         rd = int(binInstruction[20:25], 2)
-        print(binInstruction[20:25])
+        rs1 = None
+        rs2 = None
+    if type == "J":
+        rd = int(binInstruction[20:25], 2)
         rs1 = None
         rs2 = None
     return rd, rs1, rs2
@@ -70,10 +72,51 @@ def identifyRegisters(rd, rs1, rs2):
     rs2Name = registers.get(rs2, "Unknown")
     return rdName, rs1Name, rs2Name
 
+def dataHazardIdentifier(instructions):
+    instructionNumber = 0
+    dataHazards = []
+
+    previousRd = None
+    previousRs1 = None
+    previousRs2 = None
+
+    for instruction in instructions:
+        instructionNumber += 1
+
+        type, binInstruction = classifyInstruction(instruction)
+        rd, rs1, rs2 = extractRegisters(type, binInstruction)
+        rdName, rs1Name, rs2Name = identifyRegisters(rd, rs1, rs2)
+
+        # RAW: instrução atual LÊ registrador escrito pela anterior
+        if previousRd and (rs1Name == previousRd or rs2Name == previousRd):
+            dataHazards.append((instructionNumber, "RAW"))
+
+        # WAR: instrução atual ESCREVE registrador lido pela anterior
+        if rdName and (previousRs1 == rdName or previousRs2 == rdName):
+            dataHazards.append((instructionNumber, "WAR"))
+
+        # WAW: instrução atual ESCREVE registrador já escrito pela anterior
+        if rdName and previousRd and rdName == previousRd:
+            dataHazards.append((instructionNumber, "WAW"))
+
+        previousRd = rdName
+        previousRs1 = rs1Name
+        previousRs2 = rs2Name
+
+    # Mostra os conflitos identificados
+    for hazard in dataHazards:
+        num, tipo = hazard
+        print(f"Conflito {tipo} detectado na instrução {num}")
+
+    print(dataHazards)
+
+    return dataHazards
 
 if __name__ == "__main__":
-    archiveName = "ex4_dump"
+    archiveName = "ex1_dump_hazard"
     instructions = readHexFile(archiveName)
+
+    dataHazards = dataHazardIdentifier(instructions)
 
     for instruction in instructions:
         type, binInstruction = classifyInstruction(instruction)
