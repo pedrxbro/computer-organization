@@ -71,116 +71,85 @@ def identifyRegisters(rd, rs1, rs2):
     rs2Name = registers.get(rs2, "Unknown")
     return rdName, rs1Name, rs2Name
 
-def dataHazardIdentifier(instructions):
-    instructionNumber = -1
+def dataHazardIdentifier(instructions, forwarding=False, insertNops=False, returnModifiedList=False):
     dataHazards = []
-
+    modifiedInstructions = []
     previousRd = None
-    previousRs1 = None
-    previousRs2 = None
+    previousOpcode = None
 
-    for instruction in instructions:
-        instructionNumber += 1
-
-        type, binInstruction = classifyInstruction(instruction)
-        rd, rs1, rs2 = extractRegisters(type, binInstruction)
+    i = 0
+    while i < len(instructions):
+        instruction = instructions[i]
+        instr_type, binInstruction = classifyInstruction(instruction)
+        opcode = binInstruction[25:]
+        rd, rs1, rs2 = extractRegisters(instr_type, binInstruction)
         rdName, rs1Name, rs2Name = identifyRegisters(rd, rs1, rs2)
 
-        # RAW: instrução atual LÊ registrador escrito pela anterior
-        if previousRd and (rs1Name == previousRd or rs2Name == previousRd):
-            dataHazards.append((instructionNumber, "RAW"))
+        conflictDetected = False
 
-        # WAR: instrução atual ESCREVE registrador lido pela anterior
-        if rdName and (previousRs1 == rdName or previousRs2 == rdName):
-            dataHazards.append((instructionNumber, "WAR"))
+        if previousRd:
+            if not forwarding:
+                if rs1Name == previousRd or rs2Name == previousRd:
+                    conflictDetected = True
+            else:
+                if previousOpcode == "0000011":  # LOAD
+                    if rs1Name == previousRd or rs2Name == previousRd:
+                        conflictDetected = True
 
-        # WAW: instrução atual ESCREVE registrador já escrito pela anterior
-        if rdName and previousRd and rdName == previousRd:
-            dataHazards.append((instructionNumber, "WAW"))
+        if conflictDetected:
+            dataHazards.append((i, "RAW"))
+            if insertNops:
+                # Inserir NOP (hexadecimal: 00000013 → ADDI x0, x0, 0)
+                nopInstruction = "00000013"
+                modifiedInstructions.append(nopInstruction)
+                print(f"NOP inserido antes da instrução {i+1} para evitar conflito (forwarding={'Sim' if forwarding else 'Não'})")
 
+        modifiedInstructions.append(instruction)
         previousRd = rdName
-        previousRs1 = rs1Name
-        previousRs2 = rs2Name
+        previousOpcode = opcode
+        i += 1
 
     for hazard in dataHazards:
         num, tipo = hazard
-        print(f"Conflito {tipo} detectado na instrução {num}")
+        print(f"Conflito {tipo} detectado na instrução {num + 1}")
 
-    print(dataHazards)
-
+    if returnModifiedList:
+        return modifiedInstructions
     return dataHazards
 
 
-# 1 - Considerar que não foi implementada a técnica de forwarding e detectar a existência de conflito de dados.
-def notUsingForwarding(instructions):
-    dataHazards = []
-    previousRd = None
-    instructionNumber = -1
+# CHAMADAS
 
-    for instruction in instructions:
-        instructionNumber += 1
-        type, binInstruction = classifyInstruction(instruction)
-        rd, rs1, rs2 = extractRegisters(type, binInstruction)
-        rdName, rs1Name, rs2Name = identifyRegisters(rd, rs1, rs2)
+def runAllAnalyses(instructions):
+    print("Original:")
+    for i, inst in enumerate(instructions, 1):
+        print(f"Instrução {i}: {inst}")
 
-        if previousRd and (rs1Name == previousRd or rs2Name == previousRd):
-            dataHazards.append(instructionNumber)
+    # 1 - Considerar que não foi implementada a técnica de forwarding e detectar a existência de conflito de dados.
+    print("\n--- 1. Conflitos SEM forwarding (sem NOPs) ---")
+    dataHazardIdentifier(instructions, forwarding=False, insertNops=False)
 
-        previousRd = rdName       
+    # 2 - Considerar que não foi implementada a técnica de forwarding e detectar a existência de conflito de dados.
+    print("\n--- 2. Conflitos COM forwarding (sem NOPs) ---")
+    dataHazardIdentifier(instructions, forwarding=True, insertNops=False)
 
-    if dataHazards:
-        print(f"Conflito de dados detectado nas instruções: {dataHazards}")
-    else:
-        print("Nenhum conflito de dados detectado.")    
+    # 3 - Considerar que não foi implementada a técnica de forwarding e incluir NOPS para evitar conflitos de dados.
+    print("\n--- 3. Instruções COM NOPs (sem forwarding) ---")
+    modifiedNoFw = dataHazardIdentifier(instructions, forwarding=False, insertNops=True, returnModifiedList=True)
+    for i, inst in enumerate(modifiedNoFw, 1):
+        print(f"Instrução {i}: {inst}")
 
-    return dataHazards
+    # 4 - Considerar que foi implementada a técnica de forwarding e incluir NOPS para evitar conflitos de dados.
+    print("\n--- 4. Instruções COM NOPs (com forwarding) ---")
+    modifiedFw = dataHazardIdentifier(instructions, forwarding=True, insertNops=True, returnModifiedList=True)
+    for i, inst in enumerate(modifiedFw, 1):
+        print(f"Instrução {i}: {inst}")
 
-
-# 2 - Considerar que não foi implementada a técnica de forwarding e detectar a existência de conflito de dados.
-def usingForwarding(instructions):
-    previousRd = None
-    previousOpcode = None
-    dataHazards = []
-    instructionNumber = -1
-
-
-    for instruction in instructions:
-        type, binInstruction = classifyInstruction(instruction)
-        opcode = binInstruction[25:]
-        rd, rs1, rs2 = extractRegisters(type, binInstruction)
-        rdName, rs1Name, rs2Name = identifyRegisters(rd, rs1, rs2)
-
-        if previousOpcode == "0000011": # Olhar para instrucoes de LOAD
-              if rs1Name == previousRd or rs2Name == previousRd:
-                  dataHazards.append(instructionNumber)
-
-        previousOpcode = opcode
-        previousRd = rdName
-
-    if dataHazards:
-        print(f"Conflito de dados detectado nas instruções: {dataHazards}")
-    else:
-        print("Nenhum conflito de dados detectado.")   
-    return dataHazards
 
 if __name__ == "__main__":
-    archiveName = "ex1_dump_hazard"
+    archiveName = "original_dump"
     instructions = readHexFile(archiveName)
 
-    print("Original:")
-    for i in instructions:
-        instructionNumber = instructions.index(i) + 1
-        print (f"Instrução: {instructionNumber} {i}")
-        
-
-    print("\n--- Análise de Conflitos ---")
-    dataHazardIdentifier(instructions)
-
-    print("\n--- Análise de Conflitos (sem forwarding) ---")
-    noFwList = notUsingForwarding(instructions)
-
-    print("\n--- Análise de Conflitos (com forwarding) ---")
-    fwList = usingForwarding(instructions)
-
+    runAllAnalyses(instructions)
 
     
