@@ -1,0 +1,11 @@
+Instrução 1: 0280006f
+Instrução 2: 41ee8e33
+Instrução 3: 007372b3
+Instrução 4: 0002a403
+Instrução 5: fe5e08e3
+Instrução 6: 008402b3
+Instrução 7: 405f0eb3
+Instrução 8: 00092483
+Instrução 9: 064a0993
+Instrução 10: 000080e7
+Instrução 11: fddff0ef

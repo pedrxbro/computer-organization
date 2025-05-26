@@ -3,6 +3,12 @@ def readHexFile(archiveName):
         instructions = file.readlines()
     return [line.strip() for line in instructions]
 
+def saveInstructionsToFile(instructions, filename):
+    with open(filename, "w") as f:
+        for i, inst in enumerate(instructions, 1):
+            f.write(f"Instrução {i}: {inst}\n")
+
+
 def convertHexToBin(instruction):
     binInstruction = bin(int(instruction, 16))[2:].zfill(32)
     return binInstruction
@@ -151,37 +157,50 @@ def runAllAnalyses(instructions):
     modifiedNoFw = dataHazardIdentifier(instructions[:], forwarding=False, insertNops=True, returnModifiedList=True)
     for i, inst in enumerate(modifiedNoFw, 1):
         print(f"Instrução {i}: {inst}")
+    print(f"Sobrecusto (NOPs inseridos): {len(modifiedNoFw) - len(instructions)}\n")
+    saveInstructionsToFile(modifiedNoFw, "nopWithoutForwarding.txt")
 
     print("\n--- 4. Instruções COM NOPs (com forwarding) ---")
     modifiedFw = dataHazardIdentifier(instructions[:], forwarding=True, insertNops=True, returnModifiedList=True)
     for i, inst in enumerate(modifiedFw, 1):
         print(f"Instrução {i}: {inst}")
+    print(f"Sobrecusto (NOPs inseridos): {len(modifiedFw) - len(instructions)}\n")
+    saveInstructionsToFile(modifiedFw, "nopWithForwarding.txt")
 
     print("\n--- 5. Reordenação para reduzir NOPs (sem forwarding) ---")
     reorderedNoFw = dataHazardIdentifier(instructions[:], forwarding=False, insertNops=True, reorder=True, returnModifiedList=True)
     for i, inst in enumerate(reorderedNoFw, 1):
         print(f"Instrução {i}: {inst}")
+    print(f"Sobrecusto (NOPs inseridos): {len(reorderedNoFw) - len(instructions)}\n")
+    saveInstructionsToFile(reorderedNoFw, "reorderWithoutForwarding.txt")
 
     print("\n--- 6. Reordenação para reduzir NOPs (com forwarding) ---")
     reorderedFw = dataHazardIdentifier(instructions[:], forwarding=True, insertNops=True, reorder=True, returnModifiedList=True)
     for i, inst in enumerate(reorderedFw, 1):
         print(f"Instrução {i}: {inst}")
+    print(f"Sobrecusto (NOPs inseridos): {len(reorderedFw) - len(instructions)}\n")
+    saveInstructionsToFile(reorderedFw, "reorderWithForwarding.txt")
 
     print("\n--- 7. Inserção de NOPs para evitar conflitos de controle (desvios) ---")
     ctrlHazards = dataHazardIdentifier(instructions[:], controlHazards=True, returnModifiedList=True)
     for i, inst in enumerate(ctrlHazards, 1):
         print(f"Instrução {i}: {inst}")
+    print(f"Sobrecusto (NOPs inseridos): {len(ctrlHazards) - len(instructions)}\n")
+    saveInstructionsToFile(ctrlHazards, "nopControlHazard.txt")
 
     print("\n--- 8. Técnica de desvio retardado (delayed branch) ---")
     delayed = dataHazardIdentifier(instructions[:], delayedBranch=True, returnModifiedList=True)
     for i, inst in enumerate(delayed, 1):
         print(f"Instrução {i}: {inst}")
+    print(f"Sobrecusto (NOPs inseridos): {len(delayed) - len(instructions)}\n")
+    saveInstructionsToFile(delayed, "delayedBranch.txt")
 
     print("\n--- 9. Combinação: NOPs + Reordenação (com forwarding) ---")
     combined = dataHazardIdentifier(instructions[:], forwarding=True, insertNops=True, reorder=True, returnModifiedList=True)
     for i, inst in enumerate(combined, 1):
         print(f"Instrução {i}: {inst}")
-
+    print(f"Sobrecusto (NOPs inseridos): {len(combined) - len(instructions)}\n")
+    saveInstructionsToFile(combined, "nopsWithReorderAndForwarding.txt")
 
 if __name__ == "__main__":
     archiveName = "original_dump"
